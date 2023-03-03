@@ -3,6 +3,8 @@ const User= require('../user/model');
 const passport= require('passport');
 const jwt=require('jsonwebtoken');
 const  config  = require('../config');
+const {getToken}= require('../../utils');
+// const { use } = require('passport');
 
 const register= async(req,res,next)=>{
     try {
@@ -28,7 +30,7 @@ const localStrategy =async (email,password,done)=>{
         await User.findOne({email}).select('-__v -createdAt -updateAt -cart_items -token');
         if(!user)return done();
         if(bcrypt.compareSync(password,user.password)){
-            ({password, ...userWithoutPassword } = user.toJson() );
+            ({password, ...userWithoutPassword } = user.toJSON() );
             return done(null, userWithoutPassword);
         }
     } catch (err) {
@@ -53,9 +55,52 @@ const login= async(req,res,next)=>{
         })
     })(req, res, next)
 } 
+  
+    const logout = async (req,res,next)=>{
+        let token=getToken(req) 
+
+        let user = await User.findOneAndUpdate({token: {$in:[token]}},{$pull: {token: token}},{useFindAndUpdate: false});
+
+        if(!token || !user){
+            res.json({
+                error:1,
+                message:'No User Found'
+            });
+        }
+        return res.json({
+            error:0,
+            message:'Logout Berhasil'
+        })
+    }
+
+
+    const me = (req,res,next)=>{
+        if(!req.user){
+            res.json({
+                err: 1,
+                message: 'Youre Not login or token expired '
+            })
+        }
+        res.json(req.user);
+    }
+
+
+    // const me = (req,res,next)=>{
+    //     if(!req.user){
+    //         res.json({
+    //             err:1,
+    //             message:`You're not login or token expired `
+    //         })
+    //     }
+    //     res.json(req.user);
+    // }
+    
 
 module.exports={
     register,
     localStrategy ,
-    login  
+    login  ,
+    logout,
+    me
 }
+
